@@ -13,10 +13,7 @@ use rocket::{
 };
 
 use crate::{
-    api::{
-        core::log_event, push_logout, unregister_push_device, ApiResult, EmptyResult, JsonResult, Notify,
-        NumberOrString,
-    },
+    api::{core::log_event, unregister_push_device, ApiResult, EmptyResult, JsonResult, Notify, NumberOrString},
     auth::{decode_admin, encode_jwt, generate_admin_claims, ClientIp},
     config::ConfigBuilder,
     db::{backup_database, get_sql_server_version, models::*, DbConn, DbConnType},
@@ -417,11 +414,7 @@ async fn deauth_user(uuid: String, _token: AdminToken, mut conn: DbConn, nt: Not
 
     let save_result = user.save(&mut conn).await;
 
-    nt.send_logout(&user, None).await;
-
-    if CONFIG.push_enabled() {
-        push_logout(&user, None, &mut conn).await;
-    }
+    nt.send_logout(&user, None, &mut conn).await;
 
     save_result
 }
@@ -435,8 +428,7 @@ async fn disable_user(uuid: String, _token: AdminToken, mut conn: DbConn, nt: No
 
     let save_result = user.save(&mut conn).await;
 
-    nt.send_logout(&user, None).await;
-    push_logout(&user, None, &mut conn).await;
+    nt.send_logout(&user, None, &mut conn).await;
 
     save_result
 }

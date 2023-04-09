@@ -48,7 +48,7 @@ use rocket::{serde::json::Json, Catcher, Route};
 use serde_json::Value;
 
 use crate::{
-    api::{push_user_update, JsonResult, JsonUpcase, Notify, UpdateType},
+    api::{JsonResult, JsonUpcase, Notify, UpdateType},
     auth::Headers,
     db::DbConn,
     error::Error,
@@ -122,7 +122,6 @@ async fn post_eq_domains(
     user.save(&mut conn).await?;
 
     nt.send_user_update(UpdateType::SyncSettings as i32, &user).await;
-    push_user_update(UpdateType::SyncSettings as i32, &user).await;
 
     Ok(Json(json!({})))
 }

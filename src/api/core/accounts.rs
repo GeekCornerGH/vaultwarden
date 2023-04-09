@@ -4,8 +4,8 @@ use serde_json::Value;
 
 use crate::{
     api::{
-        core::log_user_event, push_logout, register_push_device, unregister_push_device, EmptyResult, JsonResult,
-        JsonUpcase, Notify, NumberOrString, PasswordData, UpdateType,
+        core::log_user_event, register_push_device, unregister_push_device, EmptyResult, JsonResult, JsonUpcase,
+        Notify, NumberOrString, PasswordData, UpdateType,
     },
     auth::{decode_delete, decode_invite, decode_verify_email, Headers},
     crypto,
@@ -343,8 +343,7 @@ async fn post_password(
     // Prevent loging out the client where the user requested this endpoint from.
     // If you do logout the user it will causes issues at the client side.
     // Adding the device uuid will prevent this.
-    nt.send_logout(&user, Some(headers.device.uuid.clone())).await;
-    push_logout(&user, Some(headers.device.uuid), &mut conn).await;
+    nt.send_logout(&user, Some(headers.device.uuid), &mut conn).await;
 
     save_result
 }
@@ -404,8 +403,7 @@ async fn post_kdf(data: JsonUpcase<ChangeKdfData>, headers: Headers, mut conn: D
     user.set_password(&data.NewMasterPasswordHash, Some(data.Key), true, None);
     let save_result = user.save(&mut conn).await;
 
-    nt.send_logout(&user, Some(headers.device.uuid.clone())).await;
-    push_logout(&user, Some(headers.device.uuid.clone()), &mut conn).await;
+    nt.send_logout(&user, Some(headers.device.uuid.clone()), &mut conn).await;
 
     save_result
 }
@@ -492,8 +490,7 @@ async fn post_rotatekey(data: JsonUpcase<KeyData>, headers: Headers, mut conn: D
     // Prevent loging out the client where the user requested this endpoint from.
     // If you do logout the user it will causes issues at the client side.
     // Adding the device uuid will prevent this.
-    nt.send_logout(&user, Some(headers.device.uuid.clone())).await;
-    push_logout(&user, Some(headers.device.uuid.clone()), &mut conn).await;
+    nt.send_logout(&user, Some(headers.device.uuid.clone()), &mut conn).await;
 
     save_result
 }
@@ -516,8 +513,7 @@ async fn post_sstamp(
     user.reset_security_stamp();
     let save_result = user.save(&mut conn).await;
 
-    nt.send_logout(&user, None).await;
-    push_logout(&user, None, &mut conn).await;
+    nt.send_logout(&user, None, &mut conn).await;
 
     save_result
 }
@@ -620,8 +616,7 @@ async fn post_email(
 
     let save_result = user.save(&mut conn).await;
 
-    nt.send_logout(&user, None).await;
-    push_logout(&user, None, &mut conn).await;
+    nt.send_logout(&user, None, &mut conn).await;
 
     save_result
 }
@@ -963,8 +958,7 @@ async fn put_device_token(
         return Ok(());
     }
 
-    let data = data.0.data;
-    let token = data.PushToken;
+    let token = data.0.data.PushToken;
     let mut device = match Device::find_by_uuid_and_user(&headers.device.uuid, &headers.user.uuid, &mut conn).await {
         Some(device) => device,
         None => err!(format!("Error: device {uuid} should be present before a token can be assigned")),

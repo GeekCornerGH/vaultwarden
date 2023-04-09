@@ -22,9 +22,14 @@ use tokio_tungstenite::{
 
 use crate::{
     api::EmptyResult,
-    db::models::{Cipher, Folder, Send, User},
+    db::{
+        models::{Cipher, Folder, Send, User},
+        DbConn,
+    },
     Error, CONFIG,
 };
+
+use super::{push_cipher_update, push_logout, push_user_update};
 
 pub fn routes() -> Vec<Route> {
     routes![websockets_err]
@@ -143,16 +148,24 @@ impl WebSocketUsers {
         );
 
         self.send_update(&user.uuid, &data).await;
+
+        if CONFIG.push_enabled() {
+            push_user_update(UpdateType::SyncOrgKeys as i32, user).await;
+        }
     }
 
-    pub async fn send_logout(&self, user: &User, acting_device_uuid: Option<String>) {
+    pub async fn send_logout(&self, user: &User, acting_device_uuid: Option<String>, conn: &mut DbConn) {
         let data = create_update(
             vec![("UserId".into(), user.uuid.clone().into()), ("Date".into(), serialize_date(user.updated_at))],
             UpdateType::LogOut as i32,
-            acting_device_uuid,
+            acting_device_uuid.clone(),
         );
 
         self.send_update(&user.uuid, &data).await;
+
+        if CONFIG.push_enabled() {
+            push_logout(user, acting_device_uuid, conn).await;
+        }
     }
 
     pub async fn send_folder_update(&self, ut: i32, folder: &Folder, acting_device_uuid: &String) {
@@ -175,6 +188,7 @@ impl WebSocketUsers {
         cipher: &Cipher,
         user_uuids: &[String],
         acting_device_uuid: &String,
+        conn: &mut DbConn,
     ) {
         let user_uuid = convert_option(cipher.user_uuid.clone());
         let org_uuid = convert_option(cipher.organization_uuid.clone());
@@ -193,6 +207,10 @@ impl WebSocketUsers {
 
         for uuid in user_uuids {
             self.send_update(uuid, &data).await;
+        }
+
+        if CONFIG.push_enabled() {
+            push_cipher_update(ut, cipher, acting_device_uuid, conn).await;
         }
     }
 
